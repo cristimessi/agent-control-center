@@ -100,6 +100,37 @@ class AnalyticsService {
     return saved;
   }
 
+  async getAllSessions() {
+    return this.runRepo.find({
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getAllComments() {
+    return this.commentRepo.find({
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async createSession(run) {
+    return this.recordRun({
+      startTime: new Date(),
+      status: 'completed',
+      durationMinutes: 0,
+      runsCount: 0,
+      commentsCount: 0,
+      visitedSubreddits: [],
+      ...run,
+    });
+  }
+
+  async createComment(comment) {
+    return this.recordComment({
+      success: true,
+      ...comment,
+    });
+  }
+
   async startRun(run) {
     return this.recordRun({
       ...run,

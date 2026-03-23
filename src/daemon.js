@@ -385,6 +385,132 @@ function createAgentControlDaemon(customConfig = config) {
     }
   });
 
+  app.get('/api/db', async (req, res) => {
+    try {
+      const [agents, comments, sessions] = await Promise.all([
+        agentService.getAll(),
+        analyticsService.getAllComments(),
+        analyticsService.getAllSessions(),
+      ]);
+
+      res.json({
+        orchestrator: orchestratorState,
+        agents,
+        comments,
+        sessions,
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/db/orchestrator', async (req, res) => {
+    try {
+      res.json(orchestratorState);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/db/agents', async (req, res) => {
+    try {
+      const agents = await agentService.getAll();
+      res.json(agents);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/db/comments', async (req, res) => {
+    try {
+      const comments = await analyticsService.getAllComments();
+      res.json(comments);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/db/sessions', async (req, res) => {
+    try {
+      const sessions = await analyticsService.getAllSessions();
+      res.json(sessions);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/db/comments', async (req, res) => {
+    try {
+      const { agentName, text, subreddit, postTitle, postUrl, success } = req.body;
+
+      if (!isNonEmptyString(agentName)) {
+        return res.status(400).json({ error: 'agentName is required' });
+      }
+      if (!isNonEmptyString(text)) {
+        return res.status(400).json({ error: 'text is required' });
+      }
+
+      const agent = await agentService.getByName(agentName);
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+
+      const comment = await analyticsService.createComment({
+        agentName,
+        text: text.trim(),
+        subreddit: isNonEmptyString(subreddit) ? subreddit.trim() : null,
+        postTitle: isNonEmptyString(postTitle) ? postTitle.trim() : null,
+        postUrl: isNonEmptyString(postUrl) ? postUrl.trim() : null,
+        success: typeof success === 'boolean' ? success : true,
+      });
+      return res.status(201).json(comment);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/db/sessions', async (req, res) => {
+    try {
+      const {
+        agentName,
+        startTime,
+        endTime,
+        durationMinutes,
+        status,
+        ip,
+        runsCount,
+        commentsCount,
+        visitedSubreddits,
+        errorMessage,
+      } = req.body;
+
+      if (!isNonEmptyString(agentName)) {
+        return res.status(400).json({ error: 'agentName is required' });
+      }
+
+      const agent = await agentService.getByName(agentName);
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+
+      const session = await analyticsService.createSession({
+        agentName,
+        startTime: startTime ? new Date(startTime) : new Date(),
+        endTime: endTime ? new Date(endTime) : null,
+        durationMinutes: typeof durationMinutes === 'number' ? durationMinutes : 0,
+        status: isNonEmptyString(status) ? status.trim() : 'completed',
+        ip: isNonEmptyString(ip) ? ip.trim() : null,
+        runsCount: typeof runsCount === 'number' ? runsCount : 0,
+        commentsCount: typeof commentsCount === 'number' ? commentsCount : 0,
+        visitedSubreddits: Array.isArray(visitedSubreddits) ? visitedSubreddits : [],
+        errorMessage: isNonEmptyString(errorMessage) ? errorMessage.trim() : null,
+      });
+      return res.status(201).json(session);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get('/api/agents', async (req, res) => {
     try {
       const agents = await agentService.getAll();
