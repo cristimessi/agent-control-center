@@ -100,6 +100,26 @@ class AnalyticsService {
     return saved;
   }
 
+  async startRun(run) {
+    return this.recordRun({
+      ...run,
+      status: run.status || 'running',
+    });
+  }
+
+  async finishRun(id, updates) {
+    if (!id) {
+      return this.recordRun(updates);
+    }
+
+    await this.runRepo.update({ id }, updates);
+    const saved = await this.runRepo.findOneBy({ id });
+    if (saved) {
+      await this.updateDailyStats(saved.agentName);
+    }
+    return saved;
+  }
+
   async recordComment(comment) {
     const saved = await this.commentRepo.save(comment);
     await this.updateDailyStats(comment.agentName);

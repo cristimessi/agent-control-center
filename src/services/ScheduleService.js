@@ -6,6 +6,7 @@ class ScheduleService {
     this.repo = AppDataSource.getRepository(require('../entities/Schedule'));
     this.activeJobs = new Map();
     this.agentService = agentService;
+    this.triggerAgentRun = null;
   }
 
   async getAll() {
@@ -112,6 +113,9 @@ class ScheduleService {
     const agent = await this.agentService.getByName(agentName);
     if (agent && agent.enabled && agent.status === 'idle') {
       console.log(`[Schedule] Running agent: ${agentName}`);
+      if (typeof this.triggerAgentRun === 'function') {
+        await this.triggerAgentRun(agentName, { source: 'schedule' });
+      }
     }
   }
 
@@ -128,6 +132,10 @@ class ScheduleService {
       job.cancel();
     }
     this.activeJobs.clear();
+  }
+
+  setRunner(triggerAgentRun) {
+    this.triggerAgentRun = triggerAgentRun;
   }
 }
 

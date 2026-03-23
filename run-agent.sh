@@ -9,6 +9,19 @@ AGENT="$1"
 RUNTIME="${2:-10}"
 LOCK_FILE="/tmp/agent-running.lock"
 MIN_GAP=60  # Reduced to 1 minute between runs
+BROWSER_ROOT="${AGENT_BROWSER_PROFILE_ROOT:-$HOME/.agent-control-center/browser}"
+
+if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "ERROR: Agent runner is only supported on macOS"
+    exit 1
+fi
+
+for dep in curl open osascript peekaboo; do
+    if ! command -v "$dep" >/dev/null 2>&1; then
+        echo "ERROR: Missing dependency: $dep"
+        exit 1
+    fi
+done
 
 # Check lock
 if [[ -f "$LOCK_FILE" ]]; then
@@ -32,6 +45,7 @@ get_profile_dir() {
         victor) echo "victor" ;;
         diana) echo "diana" ;;
         leo) echo "leo" ;;
+        *) echo "$1" ;;
     esac
 }
 
@@ -76,7 +90,7 @@ SUB="${REDDIT_SUBS[$((RANDOM % ${#REDDIT_SUBS[@]}))]}"
 echo "=== Reddit: $SUB ==="
 
 # Setup Chrome with profile
-USER_DATA_DIR="/Users/lido/.openclaw/browser/$PROFILE/user-data"
+USER_DATA_DIR="$BROWSER_ROOT/$PROFILE/user-data"
 mkdir -p "$USER_DATA_DIR"
 
 # Kill any existing Chrome

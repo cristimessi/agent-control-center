@@ -1,9 +1,14 @@
 require('reflect-metadata');
 const { DataSource } = require('typeorm');
+const fs = require('fs');
+const path = require('path');
+const { config } = require('./config');
+
+fs.mkdirSync(path.dirname(config.databasePath), { recursive: true });
 
 const AppDataSource = new DataSource({
   type: 'better-sqlite3',
-  database: 'agent_control.db',
+  database: config.databasePath,
   synchronize: true,
   logging: false,
   entities: [

@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "concurrently \"node server.js\" \"react-scripts start\""
+    "dev": "concurrently \"node server.js\" \"react-scripts start\"",
+    "launchd:install": "bash scripts/install-launchd.sh",
+    "launchd:uninstall": "bash scripts/uninstall-launchd.sh"
   },
   "dependencies": {
     "better-sqlite3": "^12.8.0",
