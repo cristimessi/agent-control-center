@@ -16,12 +16,16 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
     exit 1
 fi
 
-for dep in curl open osascript peekaboo; do
+for dep in curl open osascript; do
     if ! command -v "$dep" >/dev/null 2>&1; then
         echo "ERROR: Missing dependency: $dep"
         exit 1
     fi
 done
+
+if ! command -v peekaboo >/dev/null 2>&1; then
+    echo "INFO: peekaboo not installed; continuing without optional UI automation helpers"
+fi
 
 # Check lock
 if [[ -f "$LOCK_FILE" ]]; then

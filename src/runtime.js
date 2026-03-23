@@ -1,7 +1,8 @@
 const fs = require('fs');
 const { spawn, spawnSync } = require('child_process');
 
-const REQUIRED_COMMANDS = ['bash', 'curl', 'open', 'osascript', 'peekaboo'];
+const REQUIRED_COMMANDS = ['bash', 'curl', 'open', 'osascript'];
+const OPTIONAL_COMMANDS = ['peekaboo'];
 
 function commandAvailable(command) {
   const result = spawnSync('bash', ['-lc', `command -v ${command}`], {
@@ -13,6 +14,7 @@ function commandAvailable(command) {
 
 function inspectRunner(config) {
   const issues = [];
+  const optionalIssues = [];
 
   if (process.platform !== 'darwin') {
     issues.push(`unsupported platform: ${process.platform}`);
@@ -28,11 +30,19 @@ function inspectRunner(config) {
     }
   }
 
+  for (const command of OPTIONAL_COMMANDS) {
+    if (!commandAvailable(command)) {
+      optionalIssues.push(`missing optional dependency: ${command}`);
+    }
+  }
+
   return {
     available: issues.length === 0,
     issues,
+    optionalIssues,
     platform: process.platform,
     requiredCommands: REQUIRED_COMMANDS,
+    optionalCommands: OPTIONAL_COMMANDS,
     runnerScriptPath: config.runnerScriptPath,
     workspaceRoot: config.workspaceRoot,
     browserProfileRoot: config.browserProfileRoot,

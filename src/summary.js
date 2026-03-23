@@ -65,6 +65,8 @@ async function buildDaemonHealth({
       workspaceRoot: runnerState.workspaceRoot,
       browserProfileRoot: runnerState.browserProfileRoot,
       requiredCommands: runnerState.requiredCommands,
+      optionalCommands: runnerState.optionalCommands,
+      optionalIssues: runnerState.optionalIssues,
     },
     orchestrator: {
       running: orchestratorState.running,
@@ -117,6 +119,7 @@ async function buildDaemonSummary({
       uptimeSeconds: Math.round((Date.now() - startedAt.getTime()) / 1000),
       runnerAvailable: runnerState.available,
       runnerIssues: runnerState.issues,
+      optionalRunnerIssues: runnerState.optionalIssues,
       localUiUrl: `http://127.0.0.1:${config.port}/`,
     },
     orchestrator: {
