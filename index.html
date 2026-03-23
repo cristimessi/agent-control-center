@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🤖 Agent Control Center</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f6f8fa; color: #24292f; min-height: 100vh; }
+    .header { background: #ffffff; padding: 16px 24px; border-bottom: 1px solid #d0d7de; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 0 rgba(208, 215, 222, 0.72); }
+    .header h1 { font-size: 24px; color: #0969da; }
+    .nav { display: flex; gap: 8px; }
+    .nav-btn { padding: 8px 16px; border: none; background: transparent; color: #57606a; cursor: pointer; border-radius: 6px; font-size: 14px; }
+    .nav-btn:hover { background: #f6f8fa; }
+    .nav-btn.active { background: #0969da; color: white; }
+    .nav-btn.active span { background: rgba(255,255,255,0.3) !important; }
+    .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+    .btn-primary { background: #1a7f37; color: white; }
+    .btn-primary:hover { background: #2da44e; }
+    .btn-danger { background: #cf222e; color: white; }
+    .btn-secondary { background: #f6f8fa; color: #24292f; border: 1px solid #d0d7de; }
+    .btn-small { padding: 4px 12px; font-size: 12px; }
+    .main { display: flex; flex: 1; height: calc(100vh - 70px); }
+    .sidebar { width: 280px; background: #ffffff; border-right: 1px solid #d0d7de; overflow-y: auto; padding: 16px; }
+    .agent-card { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 12px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; }
+    .agent-card:hover { border-color: #0969da; }
+    .agent-card.active { border-color: #1a7f37; background: #dafbe1; }
+    .agent-card.disabled { opacity: 0.5; }
+    .agent-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .agent-name { font-weight: 600; font-size: 14px; text-transform: capitalize; }
+    .status-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+    .status-idle { background: #f6f8fa; color: #57606a; border: 1px solid #d0d7de; }
+    .status-running { background: #1a7f37; color: white; }
+    .status-error { background: #cf222e; color: white; }
+    .agent-stats { display: flex; gap: 12px; font-size: 12px; color: #57606a; }
+    .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .agent-detail { flex: 1; padding: 24px; overflow-y: auto; background: #ffffff; height: calc(100vh - 140px); }
+    .agent-detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .agent-detail-header h2 { font-size: 28px; text-transform: capitalize; }
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .detail-card { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px; }
+    .detail-card h3 { font-size: 12px; color: #57606a; text-transform: uppercase; margin-bottom: 8px; }
+    .detail-card p { font-size: 18px; font-weight: 600; }
+    .section { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px; margin-top: 16px; }
+    .section h3 { font-size: 14px; margin-bottom: 12px; color: #57606a; }
+    .tag { display: inline-block; padding: 4px 8px; background: #ffffff; border: 1px solid #d0d7de; border-radius: 4px; font-size: 12px; margin: 2px; }
+    .tag-allowed { background: #dafbe1; border-color: #1a7f37; }
+    .tag-blocked { background: #ffebe9; border-color: #cf222e; }
+    .tag-subreddit { background: #ddf4ff; border-color: #0969da; }
+    textarea { width: 100%; min-height: 80px; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; color: #24292f; padding: 12px; font-family: monospace; font-size: 14px; resize: vertical; }
+    input[type="number"], input[type="text"], select { width: 100%; padding: 8px; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; color: #24292f; }
+    .comment-item { background: #ffffff; padding: 12px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid #1a7f37; border: 1px solid #d0d7de; }
+    .comment-item .meta { font-size: 11px; color: #57606a; margin-bottom: 4px; }
+    .comment-item .text { font-size: 13px; color: #24292f; }
+    .site-input { display: flex; gap: 8px; margin-bottom: 8px; }
+    .site-input input { flex: 1; padding: 8px; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; color: #24292f; }
+    .logs-section { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px; max-height: 200px; overflow-y: auto; }
+    .logs-section h3 { font-size: 14px; margin-bottom: 12px; color: #57606a; }
+    .log-entry { font-family: monospace; font-size: 11px; padding: 4px 8px; margin-bottom: 4px; border-radius: 4px; background: #ffffff; color: #24292f; border: 1px solid #d0d7de; white-space: pre-wrap; word-break: break-all; }
+    .no-agent { display: flex; align-items: center; justify-content: center; height: 100%; color: #57606a; font-size: 18px; }
+    .activity { font-size: 12px; color: #0969da; margin-top: 8px; }
+    .orchestrator { background: #ffffff; padding: 12px 24px; border-bottom: 1px solid #d0d7de; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+    .orch-status { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .orch-indicator { width: 10px; height: 10px; border-radius: 50%; }
+    .orch-indicator.active { background: #1a7f37; }
+    .orch-indicator.inactive { background: #cf222e; }
+    .cron-list { display: flex; gap: 16px; flex-wrap: wrap; }
+    .cron-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; font-size: 12px; }
+    .cron-item.active { border-color: #1a7f37; background: #dafbe1; }
+    .cron-toggle { cursor: pointer; }
+    .config-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
+    
+    /* Analytics */
+    .analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .analytics-card { background: #ffffff; border: 1px solid #d0d7de; border-radius: 8px; padding: 20px; }
+    .analytics-card h3 { font-size: 12px; color: #57606a; text-transform: uppercase; margin-bottom: 8px; }
+    .analytics-card .value { font-size: 32px; font-weight: 700; color: #24292f; }
+    .analytics-card .sub { font-size: 12px; color: #57606a; margin-top: 4px; }
+    .analytics-card.success .value { color: #1a7f37; }
+    .analytics-card.warning .value { color: #9a6700; }
+    .analytics-card.error .value { color: #cf222e; }
+    
+    /* Schedules */
+    .schedule-list { display: flex; flex-direction: column; gap: 12px; }
+    .schedule-item { display: flex; align-items: center; gap: 16px; padding: 16px; background: #ffffff; border: 1px solid #d0d7de; border-radius: 8px; }
+    .schedule-item.active { border-color: #1a7f37; }
+    .schedule-info { flex: 1; }
+    .schedule-info .name { font-weight: 600; font-size: 14px; }
+    .schedule-info .type { font-size: 12px; color: #57606a; }
+    .schedule-form { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .schedule-form h4 { margin-bottom: 12px; font-size: 14px; }
+    .form-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+    
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    .top-subreddits { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .subreddit-item { display: flex; justify-content: space-between; padding: 8px 12px; background: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; font-size: 13px; }
+    .subreddit-item .name { color: #0969da; }
+    .subreddit-item .count { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="orchestrator">
+    <div class="orch-status">
+      <div class="orch-indicator" id="orch-indicator"></div>
+      <span id="orch-status-text">Orchestrator Active</span>
+    </div>
+    <button class="btn btn-secondary btn-small" onclick="toggleOrchestrator()" id="orch-toggle">Pause All</button>
+    <button class="btn btn-primary btn-small" onclick="showAddAgent()">+ Add Agent</button>
+    <div class="cron-list" id="cron-list"></div>
+  </div>
+  <header class="header">
+    <h1>🤖 Agent Control Center</h1>
+    <div class="nav">
+      <button class="nav-btn active" onclick="showTab('agents')" id="nav-agents">Agents <span id="tab-agents-count" style="background:#d0d7de;padding:2px 6px;border-radius:10px;font-size:11px;">8</span></button>
+      <button class="nav-btn" onclick="showTab('schedules')" id="nav-schedules">Schedules <span id="tab-schedules-count" style="background:#d0d7de;padding:2px 6px;border-radius:10px;font-size:11px;">0</span></button>
+      <button class="nav-btn" onclick="showTab('analytics')" id="nav-analytics">Analytics</button>
+    </div>
+    <div><span id="active-count" style="color: #57606a; margin-right: 16px;">0 active</span></div>
+  </header>
+  
+  <!-- Agents Tab -->
+  <div id="tab-agents" class="tab-content active">
+    <div class="main">
+      <div class="sidebar" id="agent-list"></div>
+      <div class="content"><div class="agent-detail" id="agent-detail"><div class="no-agent">Select an agent to view details</div></div></div>
+    </div>
+  </div>
+  
+  <!-- Schedules Tab -->
+  <div id="tab-schedules" class="tab-content">
+    <div class="content" style="padding: 24px; overflow-y: auto;">
+      <h2 style="margin-bottom: 16px;">Agent Schedules</h2>
+      <div class="schedule-form">
+        <h4>Create New Schedule</h4>
+        <div class="form-row">
+          <div><label style="font-size:12px;color:#57606a;">Agent</label><select id="schedule-agent"><option value="">Select agent...</option></select></div>
+          <div><label style="font-size:12px;color:#57606a;">Type</label><select id="schedule-type" onchange="updateScheduleFields()"><option value="manual">Manual</option><option value="interval">Interval</option><option value="cron">Cron</option><option value="daily">Daily</option></select></div>
+          <div id="field-interval"><label style="font-size:12px;color:#57606a;">Minutes</label><input type="number" id="schedule-interval" value="30"></div>
+          <div id="field-cron" style="display:none;"><label style="font-size:12px;color:#57606a;">Cron (e.g. */30 * * * *)</label><input type="text" id="schedule-cron" placeholder="*/30 * * * *"></div>
+          <div id="field-daily" style="display:none;"><label style="font-size:12px;color:#57606a;">Time (HH:MM)</label><input type="text" id="schedule-daily" placeholder="09:00"></div>
+        </div>
+        <div><label style="font-size:12px;color:#57606a;">Name (optional)</label><input type="text" id="schedule-name" placeholder="My Schedule"></div>
+        <button class="btn btn-primary" style="margin-top:12px;" onclick="createSchedule()">Create Schedule</button>
+      </div>
+      <div class="schedule-list" id="schedule-list"></div>
+    </div>
+  </div>
+  
+  <!-- Analytics Tab -->
+  <div id="tab-analytics" class="tab-content">
+    <div class="content" style="padding: 24px; overflow-y: auto;">
+      <h2 style="margin-bottom: 16px;">Analytics Overview</h2>
+      <div class="analytics-grid" id="analytics-overview"></div>
+      
+      <div class="section">
+        <h3>Top Subreddits</h3>
+        <div class="top-subreddits" id="top-subreddits"></div>
+      </div>
+      
+      <div class="section">
+        <h3>Agent Performance</h3>
+        <div id="agent-stats"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let agents = {};
+    let selectedAgent = null;
+    let orchestrator = { running: true, activeCronJobs: [] };
+    let schedules = [];
+
+    socket.on('stateUpdate', (state) => { 
+      if (Array.isArray(state)) {
+        agents = {};
+        state.forEach(a => agents[a.name] = a);
+      }
+      renderAgentList(); 
+      if (selectedAgent && agents[selectedAgent]) renderAgentDetail(agents[selectedAgent]); 
+      updateActiveCount(); 
+      updateTabCounts(); 
+    });
+    socket.on('orchestratorUpdate', (state) => { orchestrator = state; renderOrchestrator(); });
+    
+    // Fallback: fetch agents via API if socket doesn't deliver
+    fetch('/api/agents').then(r => r.json()).then(data => {
+      if (Object.keys(agents).length === 0 && Array.isArray(data)) {
+        data.forEach(a => agents[a.name] = a);
+        renderAgentList();
+        updateTabCounts();
+      }
+    });
+    
+    function updateTabCounts() {
+      document.getElementById('tab-agents-count').textContent = Object.keys(agents).length;
+      document.getElementById('tab-schedules-count').textContent = schedules.length;
+    }
+    
+    function showTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(`tab-${tab}`).classList.add('active');
+      document.getElementById(`nav-${tab}`).classList.add('active');
+      
+      if (tab === 'schedules') loadSchedules();
+      if (tab === 'analytics') loadAnalytics();
+    }
+    
+    function updateActiveCount() { const active = Object.values(agents).filter(a => a.status === 'running').length; document.getElementById('active-count').textContent = `${active} active`; }
+    
+    function renderOrchestrator() {
+      document.getElementById('orch-indicator').className = 'orch-indicator ' + (orchestrator.running ? 'active' : 'inactive');
+      document.getElementById('orch-status-text').textContent = orchestrator.running ? 'Orchestrator Active' : 'Orchestrator Paused';
+      document.getElementById('orch-toggle').textContent = orchestrator.running ? 'Pause All' : 'Resume All';
+      document.getElementById('orch-toggle').className = orchestrator.running ? 'btn btn-danger btn-small' : 'btn btn-primary btn-small';
+      
+      let cronHtml = (orchestrator.activeCronJobs || []).map(job => `
+        <div class="cron-item ${job.active ? 'active' : ''}">
+          <span>${job.name}</span>
+          <span style="color:#57606a">${job.schedule}</span>
+          <input type="checkbox" class="cron-toggle" ${job.active ? 'checked' : ''} onchange="toggleCron('${job.name}')">
+        </div>
+      `).join('');
+      
+      cronHtml += `
+        <div class="section" style="margin-top:8px;padding:8px;">
+          <label style="font-size:12px;color:#57606a;">Global Instructions</label>
+          <textarea id="orch-instructions" style="min-height:60px;font-size:12px;" placeholder="Instructions for all agents...">${orchestrator.globalInstructions || ''}</textarea>
+          <button class="btn btn-primary btn-small" style="margin-top:4px;" onclick="saveOrchInstructions()">Save</button>
+        </div>
+      `;
+      
+      document.getElementById('cron-list').innerHTML = cronHtml;
+    }
+    
+    function toggleOrchestrator() { fetch('/api/orchestrator/toggle', { method: 'POST' }); }
+    function toggleCron(name) { fetch(`/api/cron/${name}/toggle`, { method: 'POST' }); }
+    function saveOrchInstructions() {
+      const text = document.getElementById('orch-instructions').value;
+      fetch('/api/orchestrator/instructions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ globalInstructions: text }) });
+    }
+    
+    function showAddAgent() {
+      const name = prompt('Enter new agent name:');
+      if (name && name.trim()) {
+        fetch('/api/agents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim() }) });
+      }
+    }
+    
+    function toggleAgent(agentName) { fetch(`/api/agents/${agentName}/toggle`, { method: 'POST' }); }
+    
+    function renderAgentList() {
+      document.getElementById('agent-list').innerHTML = Object.values(agents).map(agent => `
+        <div class="agent-card ${selectedAgent === agent.name ? 'active' : ''} ${!agent.enabled ? 'disabled' : ''}" onclick="selectAgent('${agent.name}')">
+          <div class="agent-card-header">
+            <span class="agent-name">${agent.name}</span>
+            <div style="display:flex;gap:4px;align-items:center;">
+              <input type="checkbox" ${agent.enabled ? 'checked' : ''} onclick="event.stopPropagation();toggleAgent('${agent.name}')" title="Enable/Disable">
+              <span class="status-badge status-${agent.status}">${agent.status}</span>
+            </div>
+          </div>
+          <div class="agent-stats"><span>🔄 ${agent.runsToday} runs</span><span>💬 ${agent.commentsToday} comments</span></div>
+          ${agent.currentActivity ? `<div class="activity">${agent.currentActivity}</div>` : ''}
+        </div>`).join('');
+    }
+    
+    function selectAgent(name) { selectedAgent = name; renderAgentList(); renderAgentDetail(agents[name]); }
+    
+    function renderAgentDetail(agent) {
+      const comments = (agent.postedComments || []).slice(-10).reverse().map(c => `<div class="comment-item"><div class="meta">${new Date(c.time).toLocaleString()} • ${c.subreddit || 'N/A'}</div><div class="text">${c.text}</div></div>`).join('') || '<div style="color:#57606a;font-size:12px;">No comments posted yet</div>';
+      const subreddits = (agent.visitedSubreddits || []).map(s => `<span class="tag tag-subreddit">${s}</span>`).join('') || '<span style="color:#57606a;font-size:12px;">None yet</span>';
+      const targetSubs = (agent.targetSubreddits || []).map(s => `<span class="tag tag-subreddit">${s} <span style="cursor:pointer;margin-left:4px;" onclick="removeConfig('${agent.name}', 'targetSubreddits', '${s}')">×</span></span>`).join('');
+      const searchTopics = (agent.searchTopics || []).map(s => `<span class="tag">${s} <span style="cursor:pointer;margin-left:4px;" onclick="removeConfig('${agent.name}', 'searchTopics', '${s}')">×</span></span>`).join('');
+      const allowedSites = (agent.allowedSites || []).map(s => `<span class="tag tag-allowed">${s} <span style="cursor:pointer;margin-left:4px;" onclick="removeSite('${agent.name}', 'allowed', '${s}')">×</span></span>`).join('');
+      const blockedSites = (agent.blockedSites || []).map(s => `<span class="tag tag-blocked">${s} <span style="cursor:pointer;margin-left:4px;" onclick="removeSite('${agent.name}', 'blocked', '${s}')">×</span></span>`).join('');
+      const logs = (agent.logs || []).slice(-20).map(l => `<div class="log-entry" style="border-left:3px solid ${l.type === 'stderr' || l.type === 'error' ? '#cf222e' : '#1a7f37'}">${new Date(l.time).toLocaleTimeString()} - ${l.message.substring(0, 200)}</div>`).join('');
+      const lastRunTime = agent.lastRun ? new Date(agent.lastRun).toLocaleString() : 'Never';
+      const createdTime = agent.createdAt ? new Date(agent.createdAt).toLocaleString() : 'N/A';
+      document.getElementById('agent-detail').innerHTML = `
+        <div class="agent-detail-header"><h2>${agent.name}</h2><button class="btn ${agent.status === 'running' ? 'btn-danger' : 'btn-primary'}" onclick="${agent.status === 'running' ? `stopAgent('${agent.name}')` : `runAgent('${agent.name}')`}">${agent.status === 'running' ? '⏹ Stop' : '▶ Run Agent'}</button></div>
+        <div class="detail-grid">
+          <div class="detail-card"><h3>Status</h3><p>${agent.status}</p></div>
+          <div class="detail-card"><h3>Browser</h3><p>${agent.browserOpen ? 'Open' : 'Closed'}</p></div>
+          <div class="detail-card"><h3>Runs Today</h3><p>${agent.runsToday}</p></div>
+          <div class="detail-card"><h3>Comments</h3><p>${agent.commentsToday}</p></div>
+          <div class="detail-card"><h3>IP Address</h3><p>${agent.ip || 'N/A'}</p></div>
+          <div class="detail-card"><h3>Activity</h3><p>${agent.currentActivity || 'Idle'}</p></div>
+          <div class="detail-card"><h3>Last Run</h3><p style="font-size:14px;">${lastRunTime}</p></div>
+          <div class="detail-card"><h3>Created</h3><p style="font-size:14px;">${createdTime}</p></div>
+          <div class="detail-card"><h3>Enabled</h3><p>${agent.enabled ? 'Yes' : 'No'}</p></div>
+        </div>
+        <div class="section"><h3>⚙️ Configuration</h3>
+          <div class="config-grid">
+            <div><label style="font-size:12px;color:#57606a;">Runtime (min)</label><input type="number" id="runtime-${agent.name}" value="${agent.runtimeMinutes || 10}"></div>
+            <div><label style="font-size:12px;color:#57606a;">Page Time (sec)</label><input type="number" id="pagetime-${agent.name}" value="${agent.pageTimeSeconds || 30}"></div>
+            <div><label style="font-size:12px;color:#57606a;">Upvotes/Session</label><input type="number" id="upvotes-${agent.name}" value="${agent.upvotesPerSession || 5}"></div>
+            <div><label style="font-size:12px;color:#57606a;">Comment Freq</label><select id="freq-${agent.name}"><option value="low" ${agent.commentFrequency === 'low' ? 'selected' : ''}>Low (1-2)</option><option value="medium" ${agent.commentFrequency === 'medium' ? 'selected' : ''}>Medium (3-5)</option><option value="high" ${agent.commentFrequency === 'high' ? 'selected' : ''}>High (6+)</option></select></div>
+          </div><button class="btn btn-primary" onclick="saveConfig('${agent.name}')">Save Configuration</button>
+        </div>
+        <div class="section"><h3>🎯 Target Subreddits</h3><div class="site-input"><input type="text" id="new-target-${agent.name}" placeholder="r/MachineLearning"><button class="btn btn-primary btn-small" onclick="addConfig('${agent.name}', 'targetSubreddits')">Add</button></div><div>${targetSubs}</div></div>
+        <div class="section"><h3>🔍 Search Topics</h3><div class="site-input"><input type="text" id="new-topic-${agent.name}" placeholder="AI, python, crypto"><button class="btn btn-primary btn-small" onclick="addConfig('${agent.name}', 'searchTopics')">Add</button></div><div>${searchTopics}</div></div>
+        <div class="section"><h3>📂 Visited Subreddits</h3><div>${subreddits}</div></div>
+        <div class="section"><h3>💬 Posted Comments (${agent.postedComments?.length || 0} total)</h3>${comments}</div>
+        <div class="section"><h3>✅ Allowed Sites (${agent.allowedSites?.length || 0})</h3><div class="site-input"><input type="text" id="new-allowed-${agent.name}" placeholder="Add site..."><button class="btn btn-primary btn-small" onclick="addSite('${agent.name}', 'allowed')">Add</button></div><div>${allowedSites}</div></div>
+        <div class="section"><h3>🚫 Blocked Sites (${agent.blockedSites?.length || 0})</h3><div class="site-input"><input type="text" id="new-blocked-${agent.name}" placeholder="Add site..."><button class="btn btn-danger btn-small" onclick="addSite('${agent.name}', 'blocked')">Add</button></div><div>${blockedSites}</div></div>
+        <div class="section"><h3>📝 Custom Instructions</h3><textarea id="instructions-${agent.name}">${agent.customInstructions || ''}</textarea><button class="btn btn-primary" style="margin-top:8px;" onclick="setInstructions('${agent.name}')">Save Instructions</button></div>
+        <div class="logs-section"><h3>Activity Logs (${agent.logs?.length || 0} entries)</h3>${logs || '<div class="log-entry">No logs yet</div>'}</div>`;
+    }
+    
+    function runAgent(name) { fetch(`/api/agents/${name}/run`, { method: 'POST' }); }
+    function stopAgent(name) { fetch(`/api/agents/${name}/stop`, { method: 'POST' }); }
+    function setInstructions(name) { fetch(`/api/agents/${name}/instructions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instructions: document.getElementById(`instructions-${name}`).value }) }); }
+    function saveConfig(name) {
+      fetch(`/api/agents/${name}/config`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        runtimeMinutes: parseInt(document.getElementById(`runtime-${name}`).value),
+        pageTimeSeconds: parseInt(document.getElementById(`pagetime-${name}`).value),
+        upvotesPerSession: parseInt(document.getElementById(`upvotes-${name}`).value),
+        commentFrequency: document.getElementById(`freq-${name}`).value
+      })});
+    }
+    function addConfig(name, type) {
+      const input = document.getElementById(type === 'targetSubreddits' ? `new-target-${name}` : `new-topic-${name}`);
+      const value = input.value.trim(); if (!value) return;
+      const arr = type === 'targetSubreddits' ? agents[name].targetSubreddits : agents[name].searchTopics;
+      if (!arr.includes(value)) { arr.push(value); saveConfigArr(name, type, arr); }
+      input.value = '';
+    }
+    function removeConfig(name, type, value) {
+      const arr = type === 'targetSubreddits' ? agents[name].targetSubreddits : agents[name].searchTopics;
+      const idx = arr.indexOf(value); if (idx > -1) { arr.splice(idx, 1); saveConfigArr(name, type, arr); }
+    }
+    function saveConfigArr(name, type, arr) { fetch(`/api/agents/${name}/config`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [type]: arr }) }); }
+    function addSite(name, type) {
+      const input = document.getElementById(`new-${type}-${name}`); const site = input.value.trim(); if (!site) return;
+      const sites = type === 'allowed' ? agents[name].allowedSites : agents[name].blockedSites;
+      if (!sites.includes(site)) { sites.push(site); fetch(`/api/agents/${name}/sites`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ allowed: agents[name].allowedSites, blocked: agents[name].blockedSites }) }); }
+      input.value = '';
+    }
+    function removeSite(name, type, site) {
+      const sites = type === 'allowed' ? agents[name].allowedSites : agents[name].blockedSites;
+      const idx = sites.indexOf(site); if (idx > -1) { sites.splice(idx, 1); fetch(`/api/agents/${name}/sites`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ allowed: agents[name].allowedSites, blocked: agents[name].blockedSites }) }); }
+    }
+    
+    // Schedule functions
+    function updateScheduleFields() {
+      const type = document.getElementById('schedule-type').value;
+      document.getElementById('field-interval').style.display = type === 'interval' ? 'block' : 'none';
+      document.getElementById('field-cron').style.display = type === 'cron' ? 'block' : 'none';
+      document.getElementById('field-daily').style.display = type === 'daily' ? 'block' : 'none';
+    }
+    
+    async function loadSchedules() {
+      schedules = await fetch('/api/schedules').then(r => r.json());
+      
+      // Populate agent dropdown
+      const agentSelect = document.getElementById('schedule-agent');
+      agentSelect.innerHTML = '<option value="">Select agent...</option>' + Object.keys(agents).map(a => `<option value="${a}">${a}</option>`).join('');
+      
+      renderSchedules();
+      updateTabCounts();
+    }
+    
+    function renderSchedules() {
+      const html = schedules.map(s => `
+        <div class="schedule-item ${s.active ? 'active' : ''}">
+          <div class="schedule-info">
+            <div class="name">${s.name || s.agentName}</div>
+            <div class="type">${s.type === 'interval' ? `Every ${s.intervalMinutes} min` : s.type === 'cron' ? s.cronExpression : s.type === 'daily' ? `Daily at ${s.dailyTime}` : 'Manual'}</div>
+          </div>
+          <button class="btn btn-secondary btn-small" onclick="toggleSchedule(${s.id})">${s.active ? 'Disable' : 'Enable'}</button>
+          <button class="btn btn-danger btn-small" onclick="deleteSchedule(${s.id})">Delete</button>
+        </div>
+      `).join('') || '<div style="color:#57606a;">No schedules created yet</div>';
+      document.getElementById('schedule-list').innerHTML = html;
+    }
+    
+    async function createSchedule() {
+      const agentName = document.getElementById('schedule-agent').value;
+      if (!agentName) return alert('Please select an agent');
+      
+      const type = document.getElementById('schedule-type').value;
+      const name = document.getElementById('schedule-name').value;
+      
+      const data = { agentName, type, active: true, name };
+      if (type === 'interval') data.intervalMinutes = parseInt(document.getElementById('schedule-interval').value);
+      if (type === 'cron') data.cronExpression = document.getElementById('schedule-cron').value;
+      if (type === 'daily') data.dailyTime = document.getElementById('schedule-daily').value;
+      
+      await fetch('/api/schedules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      loadSchedules();
+    }
+    
+    async function toggleSchedule(id) {
+      await fetch(`/api/schedules/${id}/toggle`, { method: 'POST' });
+      loadSchedules();
+    }
+    
+    async function deleteSchedule(id) {
+      await fetch(`/api/schedules/${id}`, { method: 'DELETE' });
+      loadSchedules();
+    }
+    
+    // Analytics functions
+    async function loadAnalytics() {
+      const overview = await fetch('/api/analytics/overview').then(r => r.json());
+      const topSubs = await fetch('/api/analytics/top-subreddits').then(r => r.json());
+      
+      document.getElementById('analytics-overview').innerHTML = `
+        <div class="analytics-card"><h3>Total Runs</h3><div class="value">${overview.totalRuns}</div></div>
+        <div class="analytics-card success"><h3>Successful</h3><div class="value">${overview.successfulRuns}</div><div class="sub">${overview.successRate}% success rate</div></div>
+        <div class="analytics-card"><h3>Total Comments</h3><div class="value">${overview.totalComments}</div></div>
+        <div class="analytics-card"><h3>Active Agents</h3><div class="value">${overview.activeAgents}</div><div class="sub">of ${overview.totalAgents} total</div></div>
+      `;
+      
+      document.getElementById('top-subreddits').innerHTML = topSubs.map(s => `
+        <div class="subreddit-item">
+          <span class="name">${s.subreddit}</span>
+          <span class="count">${s.commentCount} comments</span>
+        </div>
+      `).join('') || '<div style="color:#57606a;">No data yet</div>';
+      
+      // Agent stats
+      const agentStatsHtml = await Promise.all(Object.keys(agents).map(async name => {
+        const stats = await fetch(`/api/analytics/agent/${name}`).then(r => r.json());
+        return `
+          <div style="padding:12px;background:#fff;border:1px solid #d0d7de;border-radius:8px;margin-bottom:8px;">
+            <div style="font-weight:600;">${name}</div>
+            <div style="font-size:12px;color:#57606a;display:flex;gap:16px;margin-top:4px;">
+              <span>${stats.totalRuns} runs</span>
+              <span>${stats.totalComments} comments</span>
+              <span>${stats.successRate}% success</span>
+              <span>${stats.avgRuntimeMinutes}min avg</span>
+            </div>
+          </div>
+        `;
+      }));
+      document.getElementById('agent-stats').innerHTML = agentStatsHtml.join('');
+    }
+  </script>
+</body>
+</html>
